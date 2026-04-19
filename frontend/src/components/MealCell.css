@@ -1,0 +1,151 @@
+.meal-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  min-height: 110px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.meal-cell--focused {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px var(--color-accent-light);
+}
+
+.meal-cell--empty {
+  border-style: dashed;
+  background: transparent;
+}
+
+.meal-cell--empty:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+/* Meal label (Lunch / Dinner) */
+.meal-cell__label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+/* Empty state add button */
+.meal-cell__add {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  width: 100%;
+  min-height: var(--min-tap);
+}
+
+.meal-cell--empty:hover .meal-cell__add {
+  color: var(--color-accent);
+}
+
+.meal-cell__plus {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.meal-cell__add-text {
+  font-size: var(--font-size-xs);
+}
+
+/* Clear button */
+.meal-cell__clear {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  border-radius: 50%;
+  line-height: 1;
+  transition: background 0.1s, color 0.1s;
+}
+
+.meal-cell__clear:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Recipe name */
+.meal-cell__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text);
+  text-align: left;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  padding-right: var(--space-5);
+}
+
+.meal-cell__name:hover {
+  color: var(--color-accent);
+}
+
+/* Score badge */
+.meal-cell__score {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* Servings control */
+.meal-cell__servings {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+
+.meal-cell__serving-btn {
+  width: var(--min-tap);
+  height: var(--min-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-lg);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  transition: background 0.1s;
+  line-height: 1;
+}
+
+.meal-cell__serving-btn:hover {
+  background: var(--color-accent-light);
+  border-color: var(--color-accent);
+}
+
+.meal-cell__serving-count {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Unavailable warning */
+.meal-cell__unavailable {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  font-weight: 500;
+}

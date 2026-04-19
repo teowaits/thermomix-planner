@@ -1,0 +1,104 @@
+.recipe-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  transition: background 0.1s;
+}
+
+.recipe-card:last-child {
+  border-bottom: none;
+}
+
+.recipe-card--clickable {
+  cursor: pointer;
+}
+
+.recipe-card--clickable:hover {
+  background: var(--color-accent-light);
+}
+
+.recipe-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.recipe-card__name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recipe-card__name--unavailable {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.recipe-card__badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.recipe-card__badge {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+}
+
+.recipe-card__badge--time {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.recipe-card__badge--score {
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.recipe-card__badge--warn {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.recipe-card__badge--custom {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.recipe-card__badge--link {
+  background: #f0f9ff;
+  color: #0369a1;
+  text-decoration: none;
+}
+
+.recipe-card__badge--link:hover {
+  text-decoration: underline;
+}
+
+.recipe-card__action {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  white-space: nowrap;
+  min-height: var(--min-tap);
+  transition: background 0.1s;
+}
+
+.recipe-card--clickable:hover .recipe-card__action {
+  background: var(--color-accent);
+  color: white;
+}

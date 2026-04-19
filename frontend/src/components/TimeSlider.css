@@ -1,0 +1,57 @@
+.time-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--min-tap);
+}
+
+.time-slider__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.time-slider__input {
+  flex: 1;
+  min-width: 80px;
+  height: 4px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+  /* Override browser default vertical sizing */
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--color-border);
+  border-radius: 999px;
+  outline: none;
+}
+
+.time-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+.time-slider__input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: var(--shadow-sm);
+}
+
+.time-slider__value {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+  white-space: nowrap;
+  min-width: 64px;
+  text-align: right;
+}

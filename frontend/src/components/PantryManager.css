@@ -1,0 +1,199 @@
+.pantry {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-6);
+  width: 100%;
+}
+
+.pantry__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.pantry__title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+  flex: 1;
+}
+
+.pantry__count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.pantry__bulk-toggle {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  font-weight: 500;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  min-height: var(--min-tap);
+  transition: background 0.1s;
+}
+
+.pantry__bulk-toggle:hover {
+  background: var(--color-accent-light);
+}
+
+/* Bulk import */
+.pantry__bulk {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-4);
+}
+
+.pantry__bulk-textarea {
+  resize: vertical;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  min-height: 100px;
+}
+
+/* Add form */
+.pantry__add-form {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.pantry__input {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  min-height: var(--min-tap);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pantry__input:focus {
+  border-color: var(--color-accent);
+}
+
+.pantry__input--name { flex: 1; min-width: 160px; }
+.pantry__input--qty  { width: 80px; }
+.pantry__input--unit { width: 80px; }
+
+/* Buttons */
+.pantry__btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  min-height: var(--min-tap);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.pantry__btn:hover { background: var(--color-surface); }
+
+.pantry__btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+.pantry__btn--primary:hover { background: var(--color-accent-dark); }
+
+.pantry__btn--sm { padding: var(--space-1) var(--space-3); min-height: 36px; }
+
+/* Error */
+.pantry__error {
+  font-size: var(--font-size-xs);
+  color: var(--color-error);
+}
+
+.pantry__error--inline {
+  width: 100%;
+}
+
+/* Item list */
+.pantry__list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pantry__empty {
+  padding: var(--space-8);
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.pantry__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  min-height: var(--min-tap);
+}
+
+.pantry__item-name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.pantry__item-qty {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.pantry__item-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.pantry__icon-btn {
+  min-width: var(--min-tap);
+  min-height: var(--min-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  transition: background 0.1s, color 0.1s;
+}
+
+.pantry__icon-btn:hover { background: var(--color-surface); color: var(--color-text); }
+
+.pantry__icon-btn--delete:hover {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+}
+
+/* Edit row */
+.pantry__edit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  flex-wrap: wrap;
+}

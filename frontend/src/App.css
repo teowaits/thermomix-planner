@@ -1,0 +1,111 @@
+/* App shell layout */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ---- Header / tab bar ---- */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: 0 var(--space-6);
+  height: var(--topbar-height);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.app-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
+
+.tab-nav {
+  display: flex;
+  gap: var(--space-1);
+  flex: 1;
+}
+
+.tab-btn {
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  min-height: var(--min-tap);
+  transition: color 0.15s, background 0.15s;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.tab-btn--active {
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  font-weight: 600;
+}
+
+/* ---- Error banner ---- */
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-6);
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border-bottom: 1px solid #fca5a5;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.error-close {
+  font-size: var(--font-size-lg);
+  color: var(--color-error);
+  line-height: 1;
+  min-width: var(--min-tap);
+  min-height: var(--min-tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Main content area ---- */
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ---- Plan tab layout ---- */
+
+.plan-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.plan-layout--panel-open {
+  grid-template-columns: 1fr var(--sidebar-width);
+}
+
+.plan-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-6);
+  gap: var(--space-4);
+}

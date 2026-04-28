@@ -140,29 +140,29 @@ class TestFuzzyMatching:
             ingredients=[Ingredient(name=name, quantity=100, unit="g")],
         )
 
-    def test_italian_singular_plural_pomodoro(self, no_recent_ids):
-        """'pomodoro' ingredient matches 'pomodori' pantry — WRatio ≈ 94."""
+    async def test_italian_singular_plural_pomodoro(self, no_recent_ids):
+        """'pomodoro' ingredient matches 'pomodori' pantry — both resolve to 'tomato'."""
         recipe = self._single_ingredient_recipe("pomodoro")
         pantry = [PantryItem(id="p1", name="pomodori")]
-        assert score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
+        assert await score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
 
-    def test_italian_singular_plural_cipolla(self, no_recent_ids):
-        """'cipolla' ingredient matches 'cipolle' pantry — WRatio ≈ 86."""
+    async def test_italian_singular_plural_cipolla(self, no_recent_ids):
+        """'cipolla' and 'cipolle' both resolve to 'onion' via dictionary."""
         recipe = self._single_ingredient_recipe("cipolla")
         pantry = [PantryItem(id="p1", name="cipolle")]
-        assert score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
+        assert await score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
 
-    def test_qualifier_suffix_farina(self, no_recent_ids):
-        """'farina 00' ingredient matches 'farina' pantry via WRatio partial."""
+    async def test_qualifier_suffix_farina(self, no_recent_ids):
+        """'farina 00' and 'farina' both resolve to 'all-purpose flour' via dictionary."""
         recipe = self._single_ingredient_recipe("farina 00")
         pantry = [PantryItem(id="p1", name="farina")]
-        assert score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
+        assert await score_recipe_by_pantry(recipe, pantry, no_recent_ids) > 0.0
 
-    def test_unrelated_ingredient_no_match(self, no_recent_ids):
-        """'sale' vs 'olio' — WRatio ≈ 30, well below threshold → no match."""
+    async def test_unrelated_ingredient_no_match(self, no_recent_ids):
+        """'sale' vs 'olio' — unrelated, no match."""
         recipe = self._single_ingredient_recipe("sale")
         pantry = [PantryItem(id="p1", name="olio")]
-        assert score_recipe_by_pantry(recipe, pantry, no_recent_ids) == pytest.approx(0.0)
+        assert await score_recipe_by_pantry(recipe, pantry, no_recent_ids) == pytest.approx(0.0)
 
     def test_fuzzy_threshold_constant_value(self):
         assert FUZZY_THRESHOLD == 85
@@ -173,7 +173,7 @@ class TestFuzzyMatching:
 # ---------------------------------------------------------------------------
 
 class TestScoreRecipeByPantry:
-    def test_full_pantry_match_no_recency(self, recipe_pasta, no_recent_ids):
+    async def test_full_pantry_match_no_recency(self, recipe_pasta, no_recent_ids):
         # pantry has all 5 pasta ingredients → coverage = 1.0, no penalty
         pantry = [
             PantryItem(id="p1", name="pasta"),
@@ -182,34 +182,33 @@ class TestScoreRecipeByPantry:
             PantryItem(id="p4", name="garlic"),
             PantryItem(id="p5", name="beef mince"),
         ]
-        score = score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
+        score = await score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
         assert score == pytest.approx(1.0)
 
-    def test_partial_match(self, recipe_pasta, no_recent_ids):
+    async def test_partial_match(self, recipe_pasta, no_recent_ids):
         # Only 2 of 5 ingredients in pantry → coverage = 0.4
         pantry = [
             PantryItem(id="p1", name="pasta"),
             PantryItem(id="p2", name="garlic"),
         ]
-        score = score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
+        score = await score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
         assert score == pytest.approx(0.4)
 
-    def test_zero_match_no_recency(self, recipe_pasta, no_recent_ids):
+    async def test_zero_match_no_recency(self, recipe_pasta, no_recent_ids):
         pantry = [PantryItem(id="p1", name="chocolate")]
-        score = score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
+        score = await score_recipe_by_pantry(recipe_pasta, pantry, no_recent_ids)
         assert score == pytest.approx(0.0)
 
-    def test_recency_penalty_applied(self, recipe_pasta, pantry_items):
+    async def test_recency_penalty_applied(self, recipe_pasta, pantry_items):
         # r001 in recent_recipe_ids → -0.3 penalty
         # pantry_items has tomatoes, onion, pasta, garlic → 4/5 = 0.8
         # 0.8 - 0.3 = 0.5
         recent = {"r001"}
-        score = score_recipe_by_pantry(recipe_pasta, pantry_items, recent)
+        score = await score_recipe_by_pantry(recipe_pasta, pantry_items, recent)
         assert score == pytest.approx(0.5)
 
-    def test_recency_penalty_clamps_to_zero(self, no_recent_ids):
+    async def test_recency_penalty_clamps_to_zero(self, no_recent_ids):
         """Score clamped to 0.0 — never negative."""
-        # 1 ingredient, none in pantry → coverage=0.0; add recipe to recency
         recipe = RecipeDetails(
             id="rx",
             name="Test",
@@ -217,10 +216,10 @@ class TestScoreRecipeByPantry:
             servings=2,
             ingredients=[Ingredient(name="truffle", quantity=10, unit="g")],
         )
-        score = score_recipe_by_pantry(recipe, [], {"rx"})
+        score = await score_recipe_by_pantry(recipe, [], {"rx"})
         assert score == pytest.approx(0.0)
 
-    def test_score_clamped_to_zero_when_recency_exceeds_coverage(self, no_recent_ids):
+    async def test_score_clamped_to_zero_when_recency_exceeds_coverage(self, no_recent_ids):
         """Low coverage + recency penalty → must clamp to 0, not go negative."""
         recipe = RecipeDetails(
             id="rx",
@@ -235,21 +234,17 @@ class TestScoreRecipeByPantry:
             ],
         )
         pantry = [PantryItem(id="p1", name="truffle")]  # 1/4 = 0.25 coverage
-        score = score_recipe_by_pantry(recipe, pantry, {"rx"})  # -0.3 penalty
+        score = await score_recipe_by_pantry(recipe, pantry, {"rx"})  # -0.3 penalty
         # 0.25 - 0.3 = -0.05 → clamped to 0
         assert score == pytest.approx(0.0)
 
-    def test_no_ingredients_returns_zero(self, no_recent_ids):
+    async def test_no_ingredients_returns_zero(self, no_recent_ids):
         recipe = RecipeDetails(id="rx", name="Empty", status="ok", ingredients=[])
-        score = score_recipe_by_pantry(recipe, [], no_recent_ids)
+        score = await score_recipe_by_pantry(recipe, [], no_recent_ids)
         assert score == 0.0
 
-    def test_plural_normalisation_matches(self, no_recent_ids):
-        """Pantry 'tomato' matches ingredient 'tomatoes' via fuzzy matching.
-
-        Phase 1: exact match failed ("tomatoe" != "tomato").
-        Phase 2: WRatio("tomatoe", "tomato") ≈ 92 ≥ 85 → match → score > 0.
-        """
+    async def test_plural_normalisation_matches(self, no_recent_ids):
+        """Pantry 'tomato' matches ingredient 'tomatoes' — both resolve to 'tomato' via dict."""
         recipe = RecipeDetails(
             id="rx",
             name="Test",
@@ -258,10 +253,10 @@ class TestScoreRecipeByPantry:
             ingredients=[Ingredient(name="tomatoes", quantity=200, unit="g")],
         )
         pantry = [PantryItem(id="p1", name="tomato")]
-        score = score_recipe_by_pantry(recipe, pantry, no_recent_ids)
+        score = await score_recipe_by_pantry(recipe, pantry, no_recent_ids)
         assert score == pytest.approx(1.0)
 
-    def test_exact_normalised_match(self, no_recent_ids):
+    async def test_exact_normalised_match(self, no_recent_ids):
         """Direct normalised string equality match works."""
         recipe = RecipeDetails(
             id="rx",
@@ -271,7 +266,7 @@ class TestScoreRecipeByPantry:
             ingredients=[Ingredient(name="Garlic", quantity=2, unit="cloves")],
         )
         pantry = [PantryItem(id="p1", name="garlic")]
-        score = score_recipe_by_pantry(recipe, pantry, no_recent_ids)
+        score = await score_recipe_by_pantry(recipe, pantry, no_recent_ids)
         assert score == pytest.approx(1.0)
 
 
@@ -280,8 +275,8 @@ class TestScoreRecipeByPantry:
 # ---------------------------------------------------------------------------
 
 class TestTopSuggestions:
-    def test_returns_scored_recipes(self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids):
-        results = top_suggestions(
+    async def test_returns_scored_recipes(self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids):
+        results = await top_suggestions(
             pantry=pantry_items,
             all_recipes=[recipe_pasta, recipe_soup],
             recent_recipe_ids=no_recent_ids,
@@ -289,50 +284,49 @@ class TestTopSuggestions:
         assert len(results) > 0
         assert all(r.score > 0.0 for r in results)
 
-    def test_sorted_by_score_descending(self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids):
-        results = top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids)
+    async def test_sorted_by_score_descending(self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids):
+        results = await top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids)
         scores = [r.score for r in results]
         assert scores == sorted(scores, reverse=True)
 
-    def test_zero_score_excluded(self, recipe_cake, pantry_items, no_recent_ids):
+    async def test_zero_score_excluded(self, recipe_cake, pantry_items, no_recent_ids):
         """Recipe with no pantry match scores 0 and must not appear in results."""
-        results = top_suggestions(pantry_items, [recipe_cake], no_recent_ids)
+        results = await top_suggestions(pantry_items, [recipe_cake], no_recent_ids)
         assert results == []
 
-    def test_unavailable_recipe_never_in_output(self, recipe_unavailable, pantry_items, no_recent_ids):
+    async def test_unavailable_recipe_never_in_output(self, recipe_unavailable, pantry_items, no_recent_ids):
         """Caller should pass only ok recipes, but even if an unavailable one
         slips through it has no ingredients → scores 0 → excluded."""
-        results = top_suggestions(pantry_items, [recipe_unavailable], no_recent_ids)
+        results = await top_suggestions(pantry_items, [recipe_unavailable], no_recent_ids)
         assert results == []
         ids = [r.recipe.id for r in results]
         assert "r004" not in ids
 
-    def test_max_time_filter_excludes_slow_recipes(
+    async def test_max_time_filter_excludes_slow_recipes(
         self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids
     ):
         # pasta = 40 min, soup = 25 min; max_time=30 → only soup passes
-        results = top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids, max_time=30)
+        results = await top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids, max_time=30)
         ids = [r.recipe.id for r in results]
         assert "r002" in ids
         assert "r001" not in ids
 
-    def test_max_time_none_means_no_filter(
+    async def test_max_time_none_means_no_filter(
         self, recipe_pasta, recipe_soup, pantry_items, no_recent_ids
     ):
-        results = top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids, max_time=None)
+        results = await top_suggestions(pantry_items, [recipe_pasta, recipe_soup], no_recent_ids, max_time=None)
         ids = [r.recipe.id for r in results]
         assert "r001" in ids
         assert "r002" in ids
 
-    def test_none_cooking_time_passes_filter(self, recipe_no_time, pantry_items, no_recent_ids):
+    async def test_none_cooking_time_passes_filter(self, recipe_no_time, pantry_items, no_recent_ids):
         """Recipe with cooking_time=None is not excluded by max_time filter."""
-        results = top_suggestions(pantry_items, [recipe_no_time], no_recent_ids, max_time=10)
-        # recipe_no_time has tomatoes + onion, both in pantry → score > 0
+        results = await top_suggestions(pantry_items, [recipe_no_time], no_recent_ids, max_time=10)
         ids = [r.recipe.id for r in results]
         assert "r005" in ids
 
-    def test_top_n_respected(self, recipe_pasta, recipe_soup, recipe_no_time, pantry_items, no_recent_ids):
-        results = top_suggestions(
+    async def test_top_n_respected(self, recipe_pasta, recipe_soup, recipe_no_time, pantry_items, no_recent_ids):
+        results = await top_suggestions(
             pantry_items,
             [recipe_pasta, recipe_soup, recipe_no_time],
             no_recent_ids,
@@ -340,18 +334,18 @@ class TestTopSuggestions:
         )
         assert len(results) == 1
 
-    def test_recency_penalty_reduces_score(self, recipe_pasta, pantry_items):
+    async def test_recency_penalty_reduces_score(self, recipe_pasta, pantry_items):
         recent = {"r001"}
         no_recent: set[str] = set()
 
-        score_with_penalty = top_suggestions(pantry_items, [recipe_pasta], recent)[0].score
-        score_without_penalty = top_suggestions(pantry_items, [recipe_pasta], no_recent)[0].score
+        score_with_penalty = (await top_suggestions(pantry_items, [recipe_pasta], recent))[0].score
+        score_without_penalty = (await top_suggestions(pantry_items, [recipe_pasta], no_recent))[0].score
         assert score_without_penalty > score_with_penalty
 
-    def test_empty_recipes_list(self, pantry_items, no_recent_ids):
-        results = top_suggestions(pantry_items, [], no_recent_ids)
+    async def test_empty_recipes_list(self, pantry_items, no_recent_ids):
+        results = await top_suggestions(pantry_items, [], no_recent_ids)
         assert results == []
 
-    def test_empty_pantry_no_results(self, recipe_pasta, no_recent_ids):
-        results = top_suggestions([], [recipe_pasta], no_recent_ids)
+    async def test_empty_pantry_no_results(self, recipe_pasta, no_recent_ids):
+        results = await top_suggestions([], [recipe_pasta], no_recent_ids)
         assert results == []

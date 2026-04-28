@@ -31,6 +31,7 @@ import backend.pantry as pantry
 import backend.recipe_cache as recipe_cache
 import backend.shopping as shopping
 import backend.suggestions as suggestions
+import backend.synonyms as synonyms
 from backend.db import DB_PATH, init_schema
 from backend.models import (
     CacheProgress,
@@ -104,6 +105,12 @@ class CustomRecipeBody(BaseModel):
     source_url: str | None = None
 
 
+class SynonymCacheEntry(BaseModel):
+    normalised_name: str
+    canonical_name: str
+    resolved_at: str | None = None
+
+
 # ---------------------------------------------------------------------------
 # ISO week helpers
 # ---------------------------------------------------------------------------
@@ -138,6 +145,11 @@ async def _run_refresh(cookidoo: Cookidoo) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         try:
             await recipe_cache.refresh_cache(db, cookidoo)
+            # Pre-resolve all unique ingredient names so daily use never hits the API
+            all_recipes = await recipe_cache.get_all_recipe_details(db)
+            all_names = [ing.name for r in all_recipes for ing in r.ingredients]
+            unique_names = list(set(all_names))
+            await synonyms.warm_cache(db, unique_names)
         except Exception:
             _LOGGER.exception("Cache refresh task failed")
             raise
@@ -385,6 +397,28 @@ async def clear_plan_slot(
     return Response(status_code=204)
 
 
+@app.get("/api/synonyms/cache")
+async def get_synonyms_cache(
+    db: aiosqlite.Connection = Depends(get_db),
+) -> list[SynonymCacheEntry]:
+    """Return all Claude-API-resolved synonym entries for operational transparency."""
+    db.row_factory = aiosqlite.Row
+    async with db.execute(
+        "SELECT normalised_name, canonical_name, resolved_at "
+        "FROM ingredient_synonyms WHERE source = 'claude_api' "
+        "ORDER BY resolved_at DESC"
+    ) as cur:
+        rows = await cur.fetchall()
+    return [
+        SynonymCacheEntry(
+            normalised_name=r["normalised_name"],
+            canonical_name=r["canonical_name"],
+            resolved_at=r["resolved_at"],
+        )
+        for r in rows
+    ]
+
+
 @app.get("/api/pantry")
 async def list_pantry(
     db: aiosqlite.Connection = Depends(get_db),
@@ -447,7 +481,7 @@ async def get_shopping_list(
         if details is not None:
             recipe_details[recipe_id] = details
 
-    return shopping.build_shopping_list(week_plan, pantry_items, recipe_details)
+    return await shopping.build_shopping_list(week_plan, pantry_items, recipe_details, db)
 
 
 @app.get("/api/suggestions")
@@ -458,7 +492,7 @@ async def get_suggestions(
     all_recipes = await recipe_cache.get_all_recipe_details(db)
     pantry_items = await pantry.list_items(db)
     recent_ids = await meal_plan.get_recent_ids(db)
-    return suggestions.top_suggestions(pantry_items, all_recipes, recent_ids, max_time=max_time)
+    return await suggestions.top_suggestions(pantry_items, all_recipes, recent_ids, max_time=max_time, db=db)
 
 
 @app.post("/api/sync/calendar")

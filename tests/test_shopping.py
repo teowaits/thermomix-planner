@@ -137,28 +137,28 @@ def test_aggregate_preserves_order():
 # build_shopping_list — core behaviour
 # ---------------------------------------------------------------------------
 
-def test_build_shopping_list_basic(fixture_recipe_cache, pantry_items):
+async def test_build_shopping_list_basic(fixture_recipe_cache, pantry_items):
     week_plan = {("2026-W16", 0, 1): "r001"}  # dinner → 4 servings
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     assert isinstance(result, ShoppingList)
     assert result.unavailable_recipes == []
     names = [i.name for i in result.items]
     assert "pasta" in [n.lower() for n in names]
 
 
-def test_build_shopping_list_scales_by_meal_slot(fixture_recipe_cache, pantry_items):
+async def test_build_shopping_list_scales_by_meal_slot(fixture_recipe_cache, pantry_items):
     """Dinner slot (meal=1) → 4 servings; recipe default is 4 → ratio 1x."""
     week_plan = {("2026-W16", 0, 1): "r001"}
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     pasta_item = next(i for i in result.items if i.name.lower() == "pasta")
     # recipe has 400g for 4 servings; dinner = 4 servings → 400g unchanged
     assert pasta_item.quantity == pytest.approx(400.0)
 
 
-def test_build_shopping_list_lunch_scales_to_2(fixture_recipe_cache, pantry_items):
+async def test_build_shopping_list_lunch_scales_to_2(fixture_recipe_cache, pantry_items):
     """Lunch slot (meal=0) → 2 servings; recipe default 4 → halved."""
     week_plan = {("2026-W16", 0, 0): "r001"}
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     pasta_item = next(i for i in result.items if i.name.lower() == "pasta")
     # 400g / 4 * 2 = 200g
     assert pasta_item.quantity == pytest.approx(200.0)
@@ -168,27 +168,27 @@ def test_build_shopping_list_lunch_scales_to_2(fixture_recipe_cache, pantry_item
 # build_shopping_list — unavailable recipe handling
 # ---------------------------------------------------------------------------
 
-def test_unavailable_recipe_excluded_from_ingredients(fixture_recipe_cache, pantry_items):
+async def test_unavailable_recipe_excluded_from_ingredients(fixture_recipe_cache, pantry_items):
     """Unavailable recipe must not contribute any ingredient lines."""
     week_plan = {("2026-W16", 0, 1): "r004"}  # Mystery Dish — unavailable
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     assert result.items == []
 
 
-def test_unavailable_recipe_name_in_unavailable_list(fixture_recipe_cache, pantry_items):
+async def test_unavailable_recipe_name_in_unavailable_list(fixture_recipe_cache, pantry_items):
     """Unavailable recipe name must appear in ShoppingList.unavailable_recipes."""
     week_plan = {("2026-W16", 0, 1): "r004"}
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     assert "Mystery Dish" in result.unavailable_recipes
 
 
-def test_mixed_plan_separates_unavailable(fixture_recipe_cache, pantry_items):
+async def test_mixed_plan_separates_unavailable(fixture_recipe_cache, pantry_items):
     """Mixed plan: ok recipe contributes items; unavailable recipe goes to warning list."""
     week_plan = {
         ("2026-W16", 0, 1): "r001",  # ok
         ("2026-W16", 1, 1): "r004",  # unavailable
     }
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     assert len(result.items) > 0
     assert "Mystery Dish" in result.unavailable_recipes
     # Ensure unavailable recipe did NOT produce ingredient lines
@@ -196,11 +196,11 @@ def test_mixed_plan_separates_unavailable(fixture_recipe_cache, pantry_items):
     assert "Mystery Dish" not in sources
 
 
-def test_missing_recipe_id_treated_as_unavailable(pantry_items):
+async def test_missing_recipe_id_treated_as_unavailable(pantry_items):
     """Recipe ID in plan but absent from cache → treated as unavailable."""
     cache: dict[str, RecipeDetails] = {}
     week_plan = {("2026-W16", 0, 1): "r999"}
-    result = build_shopping_list(week_plan, pantry_items, cache)
+    result = await build_shopping_list(week_plan, pantry_items, cache)
     assert result.items == []
     assert "r999" in result.unavailable_recipes
 
@@ -209,10 +209,10 @@ def test_missing_recipe_id_treated_as_unavailable(pantry_items):
 # build_shopping_list — pantry matching
 # ---------------------------------------------------------------------------
 
-def test_pantry_match_marks_owned(fixture_recipe_cache, pantry_items):
+async def test_pantry_match_marks_owned(fixture_recipe_cache, pantry_items):
     """Ingredients present in pantry are marked owned=True."""
     week_plan = {("2026-W16", 0, 1): "r001"}
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     owned_names = {i.name.lower() for i in result.items if i.owned}
     # pasta, tomato(es), onion, garlic are all in pantry
     assert "pasta" in owned_names
@@ -220,21 +220,21 @@ def test_pantry_match_marks_owned(fixture_recipe_cache, pantry_items):
     assert "garlic" in owned_names
 
 
-def test_non_pantry_item_not_owned(fixture_recipe_cache, pantry_items):
+async def test_non_pantry_item_not_owned(fixture_recipe_cache, pantry_items):
     week_plan = {("2026-W16", 0, 1): "r001"}
-    result = build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, pantry_items, fixture_recipe_cache)
     not_owned = {i.name.lower() for i in result.items if not i.owned}
     assert "beef mince" in not_owned
 
 
-def test_empty_pantry_nothing_owned(fixture_recipe_cache):
+async def test_empty_pantry_nothing_owned(fixture_recipe_cache):
     week_plan = {("2026-W16", 0, 1): "r001"}
-    result = build_shopping_list(week_plan, [], fixture_recipe_cache)
+    result = await build_shopping_list(week_plan, [], fixture_recipe_cache)
     assert all(not i.owned for i in result.items)
 
 
-def test_empty_plan_returns_empty_list(fixture_recipe_cache, pantry_items):
-    result = build_shopping_list({}, pantry_items, fixture_recipe_cache)
+async def test_empty_plan_returns_empty_list(fixture_recipe_cache, pantry_items):
+    result = await build_shopping_list({}, pantry_items, fixture_recipe_cache)
     assert result.items == []
     assert result.unavailable_recipes == []
 
@@ -321,25 +321,25 @@ def test_unit_normalisation_known_vs_unknown():
 # build_shopping_list — fuzzy pantry matching
 # ---------------------------------------------------------------------------
 
-def test_fuzzy_pantry_match_marks_owned():
-    """'pomodoro' ingredient is owned when pantry contains 'pomodori' (WRatio ≈ 94)."""
+async def test_fuzzy_pantry_match_marks_owned():
+    """'pomodoro' and 'pomodori' both resolve to 'tomato' via dictionary → owned."""
     recipe = RecipeDetails(
         id="fx1", name="Fuzzy Recipe", status="ok", servings=2,
         ingredients=[Ingredient(name="pomodoro", quantity=200, unit="g")],
     )
     pantry = [PantryItem(id="p1", name="pomodori")]
-    result = build_shopping_list({("2026-W16", 0, 1): "fx1"}, pantry, {"fx1": recipe})
+    result = await build_shopping_list({("2026-W16", 0, 1): "fx1"}, pantry, {"fx1": recipe})
     assert len(result.items) == 1
     assert result.items[0].owned is True
 
 
-def test_fuzzy_pantry_no_match_unrelated():
-    """'sale fino' ingredient is NOT owned when pantry only has 'olio' (WRatio ≈ 30)."""
+async def test_fuzzy_pantry_no_match_unrelated():
+    """'sale fino' ingredient is NOT owned when pantry only has 'olio'."""
     recipe = RecipeDetails(
         id="fx2", name="Fuzzy Recipe 2", status="ok", servings=2,
         ingredients=[Ingredient(name="sale fino", quantity=5, unit="g")],
     )
     pantry = [PantryItem(id="p1", name="olio")]
-    result = build_shopping_list({("2026-W16", 0, 1): "fx2"}, pantry, {"fx2": recipe})
+    result = await build_shopping_list({("2026-W16", 0, 1): "fx2"}, pantry, {"fx2": recipe})
     assert len(result.items) == 1
     assert result.items[0].owned is False

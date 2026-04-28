@@ -1,11 +1,12 @@
 """
-suggestions.py — pure functions, no DB, no network, no async.
+suggestions.py — scoring and suggestion functions.
 
 Route handlers are responsible for:
   1. Fetching all ok-status RecipeDetails from the DB.
   2. Querying the meal_plan table for recent_recipe_ids (W-1 and W-2 relative
      to the current ISO week) and passing the result as a set[str].
   3. Passing pantry items as a list[PantryItem].
+  4. Passing a db connection so ingredients can be resolved to canonical names.
 
 Scoring formula (locked — do not modify):
     coverage        = matched_pantry_ingredients / total_ingredients
@@ -15,11 +16,21 @@ Scoring formula (locked — do not modify):
 Phase 2 notes:
   - Ingredient matching uses rapidfuzz WRatio ≥ FUZZY_THRESHOLD (85).
   - Unit normalisation is not applied to ingredient names (Phase 2 Item 1c).
+
+Phase 3 notes:
+  - score_recipe_by_pantry and top_suggestions are now async.
+  - When db is provided, ingredients are resolved to canonical English names
+    via synonyms.resolve_ingredient() before fuzzy comparison. This enables
+    cross-language pantry matching (e.g. "cipolla" pantry matches "onion" recipe).
+  - When db is None (test mode): dictionary-only resolution, no SQLite/API access.
+  - synonyms is imported lazily inside the functions to avoid a circular import
+    (synonyms.py imports normalise_ingredient_name from this module).
 """
 from __future__ import annotations
 
 from typing import List, Optional, Set
 
+import aiosqlite
 from rapidfuzz import fuzz
 
 from backend.models import PantryItem, RecipeDetails, ScoredRecipe
@@ -84,10 +95,11 @@ def normalise_ingredient_name(name: str) -> str:
 # Scoring
 # ---------------------------------------------------------------------------
 
-def score_recipe_by_pantry(
+async def score_recipe_by_pantry(
     recipe: RecipeDetails,
     pantry: List[PantryItem],
     recent_recipe_ids: Set[str],
+    db: Optional[aiosqlite.Connection] = None,
 ) -> float:
     """
     Return a pantry-match score in [0.0, 1.0] for the recipe.
@@ -100,21 +112,27 @@ def score_recipe_by_pantry(
         recency_penalty = 0.3 if recipe.id in recent_recipe_ids else 0.0
         final_score     = max(0.0, coverage - recency_penalty)
 
+    When db is provided, ingredient names are resolved to canonical English via
+    synonyms.resolve_ingredient() enabling cross-language matching.
+    When db is None, falls back to normalise_ingredient_name() only.
+
     If the recipe has no ingredients, returns 0.0.
     """
+    # Lazy import avoids circular dependency (synonyms imports normalise from here)
+    from backend.synonyms import resolve_ingredient  # noqa: PLC0415
+
     if not recipe.ingredients:
         return 0.0
 
-    pantry_names: List[str] = [normalise_ingredient_name(p.name) for p in pantry]
+    pantry_canonical: List[str] = [
+        await resolve_ingredient(p.name, db) for p in pantry
+    ]
 
-    matched = sum(
-        1
-        for ing in recipe.ingredients
-        if any(
-            fuzz.WRatio(normalise_ingredient_name(ing.name), p) >= FUZZY_THRESHOLD
-            for p in pantry_names
-        )
-    )
+    matched = 0
+    for ing in recipe.ingredients:
+        ing_canon = await resolve_ingredient(ing.name, db)
+        if any(fuzz.WRatio(ing_canon, p) >= FUZZY_THRESHOLD for p in pantry_canonical):
+            matched += 1
 
     coverage = matched / len(recipe.ingredients)
     recency_penalty = 0.3 if recipe.id in recent_recipe_ids else 0.0
@@ -125,12 +143,13 @@ def score_recipe_by_pantry(
 # Top suggestions
 # ---------------------------------------------------------------------------
 
-def top_suggestions(
+async def top_suggestions(
     pantry: List[PantryItem],
     all_recipes: List[RecipeDetails],
     recent_recipe_ids: Set[str],
     max_time: Optional[int] = None,
     n: int = 10,
+    db: Optional[aiosqlite.Connection] = None,
 ) -> List[ScoredRecipe]:
     """
     Return the top-n recipes sorted by pantry-match score descending.
@@ -165,7 +184,7 @@ def top_suggestions(
             if recipe.cooking_time > max_time:
                 continue
 
-        score = score_recipe_by_pantry(recipe, pantry, recent_recipe_ids)
+        score = await score_recipe_by_pantry(recipe, pantry, recent_recipe_ids, db=db)
         if score > 0.0:
             candidates.append(ScoredRecipe(recipe=recipe, score=score))
 

@@ -17,7 +17,9 @@ from typing import Dict, List, Optional, Tuple
 
 from rapidfuzz import fuzz
 
+import aiosqlite
 from backend.suggestions import FUZZY_THRESHOLD, normalise_ingredient_name
+from backend.synonyms import resolve_ingredient
 from backend.models import (
     AggregatedIngredient,
     Ingredient,
@@ -190,10 +192,11 @@ def aggregate_ingredients(
     return result
 
 
-def build_shopping_list(
+async def build_shopping_list(
     week_plan: Dict[Tuple[str, int, int], str],
     pantry_items: List[PantryItem],
     recipe_cache: Dict[str, RecipeDetails],
+    db: aiosqlite.Connection | None = None,
 ) -> ShoppingList:
     """
     Build a shopping list for the given week plan.
@@ -243,16 +246,16 @@ def build_shopping_list(
 
     aggregated = aggregate_ingredients(ingredient_lists)
 
-    pantry_norm_names: List[str] = [
-        normalise_ingredient_name(p.name) for p in pantry_items
+    pantry_canonical: List[str] = [
+        await resolve_ingredient(p.name, db) for p in pantry_items
     ]
 
     items: list[ShoppingItem] = []
     for agg in aggregated:
-        norm = normalise_ingredient_name(agg.name)
+        canon = await resolve_ingredient(agg.name, db)
         owned = any(
-            fuzz.WRatio(norm, p) >= FUZZY_THRESHOLD
-            for p in pantry_norm_names
+            fuzz.WRatio(canon, p) >= FUZZY_THRESHOLD
+            for p in pantry_canonical
         )
 
         items.append(

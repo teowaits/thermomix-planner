@@ -63,4 +63,13 @@ async def init_schema(db: aiosqlite.Connection) -> None:
         )
     """)
 
+    await db.execute("""
+        CREATE TABLE IF NOT EXISTS ingredient_synonyms (
+            normalised_name TEXT PRIMARY KEY,
+            canonical_name  TEXT NOT NULL,
+            source          TEXT NOT NULL,
+            resolved_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     await db.commit()

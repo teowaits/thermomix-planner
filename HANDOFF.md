@@ -50,11 +50,14 @@ Core workflow:
 | Phase 2, Item 3 | Custom recipe badge | ✅ Done | frontend, included in Item 2 |
 | Phase 2, Item 4 | Single-user Docker / NAS deployment | ✅ Done | 107 tests passing; local smoke test passed April 2026 |
 | Display fix | Ingredient name preposition stripping at render | ✅ Done | frontend `utils/normalise.ts`, no backend change |
+| Recipe hover tooltip | `MealCell.tsx` + `MealCell.css` | ✅ Done | CSS `:hover` on name wrapper shows cooking time + up to 10 ingredients. `pointer-events:none`. |
+| Drag-and-drop slots | `WeekGrid.tsx`, `MealCell.tsx`, `App.tsx` | ✅ Done | `dragSourceRef` (ref not state). Move to empty slot; swap with filled slot. Both backed by API calls. |
+| History tab | `HistoryTab.tsx` + `GET /api/plan/history` | ✅ Done | Groups by ISO week DESC. Shows day, meal, recipe name, cooking time. |
 
 ### Next step
 
-**Step 12 — Phase 3 (pending go-ahead)**  
-See §15 for Phase 3 items. Do not begin without explicit go-ahead.
+Multilingual ingredient matching (synonyms.py + Claude API fallback).  
+Prompt ready — see §14.
 
 ---
 
@@ -105,6 +108,7 @@ GET    /api/cache/status                      → CacheStatus
 GET    /api/plan?week=                        → list[WeekSlot]
 PUT    /api/plan/{iso_week}/{day}/{meal}       → WeekSlot | 400 | 404
 DELETE /api/plan/{iso_week}/{day}/{meal}       → 204 | 404
+GET    /api/plan/history                      → list[HistorySlot] (past weeks only, joined with recipe names, DESC)
 GET    /api/pantry                            → list[PantryItem]
 POST   /api/pantry                            → PantryItem
 PUT    /api/pantry/{id}                       → PantryItem | 404
@@ -216,6 +220,7 @@ async def _run_refresh(cookidoo: Cookidoo) -> None:
 | Recipe picker | Collection browser + search toggle | Time filter; pantry match score badge; click to assign to focused slot |
 | Pantry | Ingredient list with qty/unit | Add / edit / delete; bulk import (newline-separated); clear all |
 | Shopping list | Aggregated, scaled, owned-flagged list | Toggle show/hide owned; "Sync to Cookidoo" button; print view; warning banner if unavailable_recipes non-empty |
+| History | Past weeks grouped by ISO week, row per meal: day · meal label · recipe name · cooking time | Read-only. Weeks shown in DESC order. |
 
 ### Meal slot card anatomy
 - Recipe name (truncated to 2 lines)

@@ -7,15 +7,27 @@ interface Props {
   currentWeek: string
   nextWeek: string
   onWeekChange: (week: string) => void
+  onExportPDF?: () => Promise<void>
 }
 
-export default function WeekNav({ viewingWeek, currentWeek, nextWeek, onWeekChange }: Props) {
+export default function WeekNav({ viewingWeek, currentWeek, nextWeek, onWeekChange, onExportPDF }: Props) {
   const canGoPrev = viewingWeek === nextWeek
   const canGoNext = viewingWeek === currentWeek
 
   const [confirm, setConfirm] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<{ ok: boolean; msg: string } | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  const handleExportPDF = async () => {
+    if (!onExportPDF || exporting) return
+    setExporting(true)
+    try {
+      await onExportPDF()
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const dateRange = isoWeekToDateRange(viewingWeek)
 
@@ -67,6 +79,17 @@ export default function WeekNav({ viewingWeek, currentWeek, nextWeek, onWeekChan
       >
         {syncing ? 'Sending…' : 'Send to Thermomix'}
       </button>
+
+      {onExportPDF && (
+        <button
+          className="week-nav__export-btn"
+          onClick={handleExportPDF}
+          disabled={exporting}
+          title="Download week plan as PDF"
+        >
+          {exporting ? 'Generating…' : '⬇ Export PDF'}
+        </button>
+      )}
 
       {syncResult && (
         <span className={`week-nav__sync-result${syncResult.ok ? '' : ' week-nav__sync-result--error'}`}>

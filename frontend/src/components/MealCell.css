@@ -83,6 +83,11 @@
   color: var(--color-error);
 }
 
+/* Recipe name + tooltip wrapper */
+.meal-cell__name-wrap {
+  position: relative;
+}
+
 /* Recipe name */
 .meal-cell__name {
   font-size: var(--font-size-sm);
@@ -95,10 +100,53 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   padding-right: var(--space-5);
+  width: 100%;
 }
 
 .meal-cell__name:hover {
   color: var(--color-accent);
+}
+
+/* Hover tooltip */
+.meal-cell__tooltip {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  min-width: 180px;
+  max-width: 260px;
+  background: var(--color-text);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.meal-cell__name-wrap:hover .meal-cell__tooltip {
+  display: block;
+}
+
+.meal-cell__tooltip-time {
+  font-weight: 600;
+  color: var(--color-accent-light);
+  margin-bottom: var(--space-1);
+}
+
+.meal-cell__tooltip-ingredients {
+  list-style: none;
+}
+
+.meal-cell__tooltip-ingredients li {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.meal-cell__tooltip-more {
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-style: italic;
 }
 
 /* Score badge */
@@ -148,4 +196,19 @@
   font-size: var(--font-size-xs);
   color: var(--color-warning);
   font-weight: 500;
+}
+
+/* Drag-and-drop */
+.meal-cell--filled {
+  cursor: grab;
+}
+
+.meal-cell--filled:active {
+  cursor: grabbing;
+}
+
+.meal-cell--drag-over {
+  border-color: var(--color-accent) !important;
+  border-style: solid !important;
+  background: var(--color-accent-light) !important;
 }

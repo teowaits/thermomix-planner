@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { pdf } from '@react-pdf/renderer'
 import {
   api,
   buildShoppingList,
@@ -13,7 +14,9 @@ import {
   slotKey,
   WeekSlot,
 } from './api'
+import WeekPlanPDF from './components/WeekPlanPDF'
 import CacheStatus from './components/CacheStatus'
+import HistoryTab from './components/HistoryTab'
 import PantryManager from './components/PantryManager'
 import RecipePicker from './components/RecipePicker'
 import RecipesTab from './components/RecipesTab'
@@ -26,7 +29,7 @@ import './App.css'
 // Types
 // ---------------------------------------------------------------------------
 
-export type ActiveTab = 'plan' | 'recipes' | 'pantry' | 'shopping'
+export type ActiveTab = 'plan' | 'recipes' | 'pantry' | 'shopping' | 'history'
 
 export interface FocusedSlot {
   isoWeek: string
@@ -98,6 +101,9 @@ export default function App() {
   // Ref to avoid stale closure in shopping list recompute
   const recipeDetailsRef = useRef(recipeDetails)
   recipeDetailsRef.current = recipeDetails
+
+  // ---- Drag source ref (no state — avoids re-renders during drag) ----
+  const dragSourceRef = useRef<{ isoWeek: string; day: number; meal: number; recipeId: string } | null>(null)
 
   // ---------------------------------------------------------------------------
   // Bootstrap: fetch weeks + plan + pantry
@@ -230,10 +236,84 @@ export default function App() {
     })
   }, [])
 
+  const handleDragStart = useCallback((isoWeek: string, day: number, meal: number, recipeId: string) => {
+    dragSourceRef.current = { isoWeek, day, meal, recipeId }
+  }, [])
+
+  const handleDrop = useCallback(async (targetIsoWeek: string, targetDay: number, targetMeal: number) => {
+    const src = dragSourceRef.current
+    dragSourceRef.current = null
+    if (!src) return
+    if (src.isoWeek === targetIsoWeek && src.day === targetDay && src.meal === targetMeal) return
+
+    const targetSlot = weekSlots.find(
+      s => s.iso_week === targetIsoWeek && s.day === targetDay && s.meal === targetMeal
+    )
+    const targetRecipeId = targetSlot?.recipe_id ?? null
+
+    const srcDay = DAY_NAMES[src.day] as DayName
+    const srcMeal = MEAL_NAMES[src.meal] as MealName
+    const tgtDay = DAY_NAMES[targetDay] as DayName
+    const tgtMeal = MEAL_NAMES[targetMeal] as MealName
+
+    try {
+      const newTgt = await api.setPlanSlot(targetIsoWeek, tgtDay, tgtMeal, src.recipeId)
+      if (targetRecipeId) {
+        // Swap: put the displaced recipe back in the source slot
+        const newSrc = await api.setPlanSlot(src.isoWeek, srcDay, srcMeal, targetRecipeId)
+        setWeekSlots(prev => {
+          const filtered = prev.filter(s =>
+            !(s.iso_week === targetIsoWeek && s.day === targetDay && s.meal === targetMeal) &&
+            !(s.iso_week === src.isoWeek && s.day === src.day && s.meal === src.meal)
+          )
+          return [...filtered, newTgt, newSrc]
+        })
+      } else {
+        // Move: clear source slot
+        await api.clearPlanSlot(src.isoWeek, srcDay, srcMeal)
+        setWeekSlots(prev => {
+          const filtered = prev.filter(s =>
+            !(s.iso_week === targetIsoWeek && s.day === targetDay && s.meal === targetMeal) &&
+            !(s.iso_week === src.isoWeek && s.day === src.day && s.meal === src.meal)
+          )
+          return [...filtered, newTgt]
+        })
+      }
+    } catch (e) {
+      setError(`Failed to move recipe: ${e}`)
+    }
+  }, [weekSlots])
+
   const handlePantryChange = useCallback(async () => {
     const items = await api.listPantry()
     setPantryItems(items)
   }, [])
+
+  const handleExportPDF = useCallback(async () => {
+    const backendList = await api.getShoppingList(viewingWeek)
+    const clientItems = backendList.items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unit: item.unit,
+      owned: item.owned,
+      recipeSources: item.recipe_sources,
+    }))
+    const blob = await pdf(
+      <WeekPlanPDF
+        viewingWeek={viewingWeek}
+        weekSlots={weekSlots}
+        pantryItems={pantryItems}
+        shoppingItems={clientItems}
+        recipeDetails={recipeDetails}
+      />
+    ).toBlob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meal-plan-${viewingWeek}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [viewingWeek, weekSlots, pantryItems, recipeDetails])
 
   // ---------------------------------------------------------------------------
   // Render
@@ -244,6 +324,7 @@ export default function App() {
     { id: 'recipes', label: 'Recipes' },
     { id: 'pantry', label: 'Pantry' },
     { id: 'shopping', label: 'Shopping' },
+    { id: 'history', label: 'History' },
   ]
 
   return (
@@ -288,6 +369,7 @@ export default function App() {
                   currentWeek={currentWeek}
                   nextWeek={nextWeek}
                   onWeekChange={setViewingWeek}
+                  onExportPDF={handleExportPDF}
                 />
               )}
               {viewingWeek && (
@@ -301,6 +383,8 @@ export default function App() {
                   onSlotClick={handleSlotClick}
                   onSlotClear={handleSlotClear}
                   onServingsChange={handleServingsChange}
+                  onDragStart={handleDragStart}
+                  onDrop={handleDrop}
                 />
               )}
             </div>
@@ -362,6 +446,8 @@ export default function App() {
             viewingWeek={viewingWeek}
           />
         )}
+
+        {activeTab === 'history' && <HistoryTab />}
       </main>
     </div>
   )

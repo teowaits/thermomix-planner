@@ -84,6 +84,15 @@ export interface WeeksResponse {
   next: string
 }
 
+export interface HistorySlot {
+  iso_week: string
+  day: number
+  meal: number
+  recipe_id: string
+  recipe_name: string
+  cooking_time: number | null
+}
+
 // ---------------------------------------------------------------------------
 // Client-side scoring — mirrors suggestions.py normalisation + fuzzy matching
 // ---------------------------------------------------------------------------
@@ -372,6 +381,7 @@ export const api = {
 
   // Plan
   getPlan: (week?: string) => get<WeekSlot[]>(`/plan${week ? '?week=' + week : ''}`),
+  getHistory: () => get<HistorySlot[]>('/plan/history'),
   setPlanSlot: (isoWeek: string, day: DayName, meal: MealName, recipeId: string) =>
     put<WeekSlot>(`/plan/${isoWeek}/${day}/${meal}`, { recipe_id: recipeId }),
   clearPlanSlot: (isoWeek: string, day: DayName, meal: MealName) =>

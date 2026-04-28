@@ -1,5 +1,6 @@
 import { defaultServings, PantryItem, RecipeDetails, scoreRecipe, WeekSlot } from '../api'
 import './MealCell.css'
+import './RecipeCard.css'
 
 interface Props {
   isoWeek: string
@@ -10,9 +11,14 @@ interface Props {
   pantryItems: PantryItem[]
   servings: number
   isFocused: boolean
+  isDragOver?: boolean
   onCellClick: () => void
   onClear: () => void
   onServingsChange: (delta: number) => void
+  onDragStart?: () => void
+  onDragOver?: () => void
+  onDragLeave?: () => void
+  onDrop?: () => void
 }
 
 export default function MealCell({
@@ -22,13 +28,17 @@ export default function MealCell({
   pantryItems,
   servings,
   isFocused,
+  isDragOver,
   onCellClick,
   onClear,
   onServingsChange,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
 }: Props) {
   const isEmpty = !slot?.recipe_id
 
-  // Pantry score (only when we have recipe details)
   const score = recipe ? scoreRecipe(recipe, pantryItems) : null
   const scorePct = score != null ? Math.round(score * 100) : null
 
@@ -40,7 +50,13 @@ export default function MealCell({
         'meal-cell',
         isEmpty ? 'meal-cell--empty' : 'meal-cell--filled',
         isFocused ? 'meal-cell--focused' : '',
+        isDragOver ? 'meal-cell--drag-over' : '',
       ].filter(Boolean).join(' ')}
+      draggable={!isEmpty}
+      onDragStart={!isEmpty ? (e) => { e.dataTransfer.effectAllowed = 'move'; onDragStart?.() } : undefined}
+      onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; onDragOver?.() }}
+      onDragLeave={onDragLeave}
+      onDrop={(e) => { e.preventDefault(); onDrop?.() }}
     >
       {/* Meal label */}
       <span className="meal-cell__label">{mealLabel}</span>
@@ -61,10 +77,38 @@ export default function MealCell({
             ×
           </button>
 
-          {/* Recipe name — clickable to re-open picker */}
-          <button className="meal-cell__name" onClick={onCellClick}>
-            {recipe?.name ?? (slot?.recipe_id ? '(deleted)' : '…')}
-          </button>
+          {/* Recipe name with hover tooltip */}
+          <div className="meal-cell__name-wrap">
+            <button className="meal-cell__name" onClick={onCellClick}>
+              {recipe?.name ?? (slot?.recipe_id ? '(deleted)' : '…')}
+            </button>
+            {recipe && (recipe.cooking_time != null || recipe.ingredients.length > 0) && (
+              <div className="meal-cell__tooltip" role="tooltip">
+                {recipe.cooking_time != null && (
+                  <div className="meal-cell__tooltip-time">⏱ {recipe.cooking_time} min</div>
+                )}
+                {recipe.ingredients.length > 0 && (
+                  <ul className="meal-cell__tooltip-ingredients">
+                    {recipe.ingredients.slice(0, 10).map((ing, i) => (
+                      <li key={i}>{ing.name}</li>
+                    ))}
+                    {recipe.ingredients.length > 10 && (
+                      <li className="meal-cell__tooltip-more">
+                        +{recipe.ingredients.length - 10} more
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Custom recipe badge */}
+          {recipe?.recipe_type === 'local_custom' && (
+            <span className="recipe-card__badge recipe-card__badge--custom">
+              Custom
+            </span>
+          )}
 
           {/* Score badge */}
           {scorePct != null && scorePct > 0 && (

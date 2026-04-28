@@ -4,7 +4,7 @@ from datetime import date, datetime, timezone, timedelta
 
 import aiosqlite
 
-from backend.models import WeekSlot
+from backend.models import HistorySlot, WeekSlot
 
 
 def _iso_week_str(d: date) -> str:
@@ -92,6 +92,35 @@ async def clear_slot(
     ) as cur:
         await db.commit()
         return cur.rowcount > 0
+
+
+async def get_history(db: aiosqlite.Connection) -> list[HistorySlot]:
+    current, next_week = _allowed_weeks()
+    db.row_factory = aiosqlite.Row
+    async with db.execute(
+        """
+        SELECT mp.iso_week, mp.day, mp.meal, mp.recipe_id,
+               COALESCE(r.name, mp.recipe_id) AS recipe_name,
+               r.cooking_time
+        FROM meal_plan mp
+        LEFT JOIN recipes r ON r.id = mp.recipe_id
+        WHERE mp.iso_week NOT IN (?, ?) AND mp.recipe_id IS NOT NULL
+        ORDER BY mp.iso_week DESC, mp.day ASC, mp.meal ASC
+        """,
+        (current, next_week),
+    ) as cur:
+        rows = await cur.fetchall()
+    return [
+        HistorySlot(
+            iso_week=row["iso_week"],
+            day=row["day"],
+            meal=row["meal"],
+            recipe_id=row["recipe_id"],
+            recipe_name=row["recipe_name"],
+            cooking_time=row["cooking_time"],
+        )
+        for row in rows
+    ]
 
 
 async def get_recent_ids(db: aiosqlite.Connection) -> set[str]:

@@ -99,6 +99,15 @@ class WeekSlot(BaseModel):
     assigned_at: Optional[str] = None  # ISO timestamp, UTC
 
 
+class HistorySlot(BaseModel):
+    iso_week: str
+    day: int
+    meal: int
+    recipe_id: str
+    recipe_name: str
+    cooking_time: Optional[int] = None
+
+
 # ---------------------------------------------------------------------------
 # Cache status
 # ---------------------------------------------------------------------------

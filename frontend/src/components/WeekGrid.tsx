@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { DAY_NAMES, defaultServings, PantryItem, RecipeDetails, slotKey, WeekSlot } from '../api'
 import type { FocusedSlot } from '../App'
 import MealCell from './MealCell'
@@ -13,9 +14,10 @@ interface Props {
   onSlotClick: (isoWeek: string, day: number, meal: number, hasRecipe: boolean) => void
   onSlotClear: (isoWeek: string, day: number, meal: number) => void
   onServingsChange: (isoWeek: string, day: number, meal: number, delta: number) => void
+  onDragStart?: (isoWeek: string, day: number, meal: number, recipeId: string) => void
+  onDrop?: (isoWeek: string, day: number, meal: number) => void
 }
 
-// Day abbreviations and full names for the grid header
 const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
 
 export default function WeekGrid({
@@ -28,7 +30,11 @@ export default function WeekGrid({
   onSlotClick,
   onSlotClear,
   onServingsChange,
+  onDragStart,
+  onDrop,
 }: Props) {
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null)
+
   // Build lookup: (day, meal) → WeekSlot
   const slotMap = new Map<string, WeekSlot>()
   for (const s of slots) {
@@ -71,9 +77,14 @@ export default function WeekGrid({
                 pantryItems={pantryItems}
                 servings={servings}
                 isFocused={isFocused}
+                isDragOver={dragOverKey === key}
                 onCellClick={() => onSlotClick(isoWeek, dayIdx, mealIdx, !!slot?.recipe_id)}
                 onClear={() => onSlotClear(isoWeek, dayIdx, mealIdx)}
                 onServingsChange={(delta) => onServingsChange(isoWeek, dayIdx, mealIdx, delta)}
+                onDragStart={slot?.recipe_id ? () => onDragStart?.(isoWeek, dayIdx, mealIdx, slot.recipe_id!) : undefined}
+                onDragOver={() => setDragOverKey(key)}
+                onDragLeave={() => setDragOverKey(prev => prev === key ? null : prev)}
+                onDrop={() => { setDragOverKey(null); onDrop?.(isoWeek, dayIdx, mealIdx) }}
               />
             )
           })}

@@ -35,6 +35,7 @@ from backend.db import DB_PATH, init_schema
 from backend.models import (
     CacheProgress,
     CacheStatus,
+    HistorySlot,
     PantryItem,
     RecipeDetails,
     RecipeSummary,
@@ -335,6 +336,13 @@ async def cache_status(
         recipe_count=counts.get("ok", 0),
         unavailable_count=counts.get("unavailable", 0),
     )
+
+
+@app.get("/api/plan/history")
+async def get_plan_history(
+    db: aiosqlite.Connection = Depends(get_db),
+) -> list[HistorySlot]:
+    return await meal_plan.get_history(db)
 
 
 @app.get("/api/plan")

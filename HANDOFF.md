@@ -222,6 +222,11 @@ async def _run_refresh(cookidoo: Cookidoo) -> None:
 | Shopping list | Aggregated, scaled, owned-flagged list | Toggle show/hide owned; "Sync to Cookidoo" button; print view; warning banner if unavailable_recipes non-empty |
 | History | Past weeks grouped by ISO week, row per meal: day · meal label · recipe name · cooking time | Read-only. Weeks shown in DESC order. |
 
+### UX enhancements (added post-Phase 2)
+
+- **Recipe hover tooltip:** hovering a filled `MealCell` shows a dark card with cooking time and up to 10 ingredients ("+N more" if longer). Rendered only when recipe details are loaded. `pointer-events:none` — does not block clicks on the name button.
+- **Drag-and-drop:** filled cells are draggable. Drop onto empty slot = move; drop onto filled slot = swap. Both backed by `PUT`/`DELETE` API calls. `dragSourceRef` is a ref (not state) to avoid re-renders during drag. `dragOverKey` local state in `WeekGrid` drives the drop-target highlight.
+
 ### Meal slot card anatomy
 - Recipe name (truncated to 2 lines)
 - Serving badge: "2 people" with − / + buttons
@@ -477,6 +482,42 @@ Do not start coding yet. Just the plan.
 ---
 
 ## 15. Phase 3 — Future items
+
+### Multilingual ingredient matching *(prompt ready, not yet coded)*
+
+**Problem:** Cookidoo ingredient names are multilingual (Italian, Spanish, English). Fuzzy matching handles spelling variants but not cross-language synonyms (e.g. "pomodori" ↔ "tomatoes").
+
+**Solution:** A two-tier lookup table. Tier 1: static JSON dictionary of known synonym groups. Tier 2: Claude API fallback for unknown terms, result cached permanently in SQLite.
+
+**Files:**
+- `backend/synonyms.py` — new module; `resolve(name) → canonical_name`
+- `backend/db.py` — new `ingredient_synonyms` table migration
+- `backend/suggestions.py` — pass resolved canonical names into `score_recipe_by_pantry()`
+- `backend/shopping.py` — same resolution in the owned-flag step
+
+**New SQLite table:**
+```sql
+CREATE TABLE IF NOT EXISTS ingredient_synonyms (
+    normalised_name TEXT PRIMARY KEY,
+    canonical_name  TEXT NOT NULL,
+    source          TEXT NOT NULL,   -- 'dictionary' | 'claude_api' | 'user'
+    resolved_at     TEXT             -- ISO timestamp, UTC
+);
+```
+
+**Static dictionary:** `backend/data/ingredient_synonyms.json`  
+103 canonical groups · 857 terms · languages: en / it / es_es / es_mx
+
+**Claude API fallback:**
+- Called once per unknown ingredient; result cached in `ingredient_synonyms` with `source='claude_api'`
+- Requires `ANTHROPIC_API_KEY` in `.env` — if absent: passthrough (no crash, no resolution)
+- Warm cache: runs after every full Cookidoo cache refresh to pre-resolve all unique ingredient names; daily use never hits the API
+
+**New route:** `GET /api/synonyms/cache` → operational transparency (list of resolved terms + sources)
+
+**Dependency note:** Ingredient substitutability (item below) depends on this feature being complete first.
+
+---
 
 ### Ingredient substitutability (user-managed)
 

@@ -187,7 +187,7 @@ async def _resolve_via_claude(name: str) -> str:
     Call Claude Haiku to get the canonical English ingredient name.
 
     Returns the original name if the API key is absent, the call fails, or
-    the response is empty. Never raises.
+    the response is empty or implausibly long. Never raises.
     """
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
@@ -196,30 +196,51 @@ async def _resolve_via_claude(name: str) -> str:
         )
         return name
 
+    system = (
+        "You are an ingredient name normaliser. "
+        "Your only job is to return the canonical singular English noun "
+        "for a cooking ingredient. "
+        "Rules: "
+        "1. Reply with ONE word or short phrase only — the bare ingredient name. "
+        "2. Always use English, always use singular form. "
+        "3. Strip all qualifiers: fresh/frozen/dried/canned/chopped/sliced/"
+        "grated/diced/whole/raw/cooked/boneless/skinless and similar. "
+        "4. Strip all size/weight/brand/variety qualifiers. "
+        "5. If the input is already a canonical English name, return it as-is. "
+        "6. Never explain, never add punctuation, never add articles (a/an/the). "
+        "Examples: "
+        "'prezzemolo tritato' -> 'parsley' "
+        "'piselli surgelati' -> 'peas' "
+        "'petti di pollo' -> 'chicken breast' "
+        "'fettine di petto di pollo' -> 'chicken breast' "
+        "'huevos duros' -> 'egg' "
+        "'scalogni' -> 'shallot' "
+        "'spicchi di aglio' -> 'garlic' "
+        "'canned chickpeas' -> 'chickpea' "
+        "'frozen spinach' -> 'spinach' "
+        "'fresh flat-leaf parsley' -> 'parsley' "
+    )
+    user = f"Ingredient: {name}"
+
     try:
         import anthropic  # local import — optional dependency
 
         client = anthropic.AsyncAnthropic(api_key=api_key)
         message = await client.messages.create(
             model="claude-haiku-4-5-20251001",
-            max_tokens=32,
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        "What is the canonical English name for this cooking ingredient? "
-                        "Reply with only the singular lowercase English ingredient name, "
-                        "nothing else. If you are uncertain, reply with the original word.\n"
-                        f"Ingredient: {name}"
-                    ),
-                }
-            ],
+            max_tokens=20,
+            system=system,
+            messages=[{"role": "user", "content": user}],
         )
         raw = message.content[0].text.strip()
-        first_line = raw.split("\n")[0].lower()
-        canonical = re.sub(r"[^\w\s\-]", "", first_line).strip()
-        _LOGGER.info("Claude resolved '%s' → '%s'", name, canonical or name)
-        return canonical or name
+        canonical = re.sub(r"[^\w\s\-]", "", raw.lower()).strip()
+        if not canonical or len(canonical) > 50:
+            _LOGGER.warning(
+                "Claude returned unexpected response for '%s': %r — using original", name, raw
+            )
+            return name
+        _LOGGER.info("Claude resolved '%s' → '%s'", name, canonical)
+        return canonical
     except Exception as exc:
         _LOGGER.warning("Claude API resolution failed for '%s': %s", name, exc)
         return name

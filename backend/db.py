@@ -9,10 +9,16 @@ DB_DIR = Path(__file__).parent.parent / "db"
 DB_PATH = DB_DIR / "planner.db"
 
 
+async def configure_connection(db: aiosqlite.Connection) -> None:
+    await db.execute("PRAGMA journal_mode=WAL")
+    await db.execute("PRAGMA busy_timeout=5000")  # wait up to 5s on lock contention
+    await db.commit()
+
+
 async def init_schema(db: aiosqlite.Connection) -> None:
     DB_DIR.mkdir(exist_ok=True)
 
-    await db.execute("PRAGMA journal_mode=WAL")
+    await configure_connection(db)
     await db.execute("PRAGMA foreign_keys=ON")
 
     await db.execute("""

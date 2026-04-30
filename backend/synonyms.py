@@ -170,10 +170,11 @@ async def warm_cache(
             (normalised, canonical),
         )
         resolved += 1
+        if resolved % 50 == 0:
+            await db.commit()
         await asyncio.sleep(0.1)
 
-    if resolved:
-        await db.commit()
+    await db.commit()  # final commit for remainder
 
     _LOGGER.info("Synonym cache warm complete. %d new API resolutions.", resolved)
 

@@ -32,7 +32,7 @@ import backend.recipe_cache as recipe_cache
 import backend.shopping as shopping
 import backend.suggestions as suggestions
 import backend.synonyms as synonyms
-from backend.db import DB_PATH, init_schema
+from backend.db import DB_PATH, configure_connection, init_schema
 from backend.models import (
     CacheProgress,
     CacheStatus,
@@ -134,6 +134,7 @@ def _next_week() -> str:
 
 async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
     async with aiosqlite.connect(DB_PATH) as db:
+        await configure_connection(db)
         yield db
 
 
@@ -143,6 +144,7 @@ async def get_db() -> AsyncGenerator[aiosqlite.Connection, None]:
 
 async def _run_refresh(cookidoo: Cookidoo) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
+        await configure_connection(db)
         try:
             await recipe_cache.refresh_cache(db, cookidoo)
             # Pre-resolve all unique ingredient names so daily use never hits the API
@@ -157,6 +159,7 @@ async def _run_refresh(cookidoo: Cookidoo) -> None:
 
 async def _run_retry(cookidoo: Cookidoo) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
+        await configure_connection(db)
         try:
             await recipe_cache.retry_unavailable(db, cookidoo)
         except Exception:

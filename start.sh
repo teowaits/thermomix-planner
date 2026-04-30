@@ -32,13 +32,17 @@ fi
 echo "Starting backend..."
 cd "$PROJECT"
 source .venv/bin/activate
+# Load environment variables from .env
+set -a
+source "$PROJECT/.env"
+set +a
 
 uvicorn backend.main:app --port 8000 > "$PROJECT/backend.log" 2>&1 &
 BACKEND_PID=$!
 
 # wait for backend to be ready (up to 15s)
 echo -n "Waiting for backend"
-for i in {1..15}; do
+for i in {1..30}; do
     sleep 1
     if curl -s http://localhost:8000/api/cache/status > /dev/null 2>&1; then
         echo " ready."

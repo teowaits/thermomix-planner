@@ -42,7 +42,7 @@ Core workflow:
 | — | `backend/suggestions.py` | ✅ Done | |
 | — | `backend/cookidoo_client.py` | ✅ Done | |
 | — | `backend/models.py` | ✅ Done | |
-| — | `tests/` | ✅ 107/107 passing | See coverage gaps in §9 |
+| — | `tests/` | ✅ 132/132 passing | See coverage gaps in §9 |
 | Phase 2, Item 1a | Preposition stripping | ✅ Done | backend + 15 tests |
 | Phase 2, Item 1b | Fuzzy matching WRatio ≥ 85 | ✅ Done | backend + 7 tests |
 | Phase 2, Item 1c | Unit normalisation, `check_units` flag | ✅ Done | backend + 6 tests |
@@ -53,11 +53,12 @@ Core workflow:
 | Recipe hover tooltip | `MealCell.tsx` + `MealCell.css` | ✅ Done | CSS `:hover` on name wrapper shows cooking time + up to 10 ingredients. `pointer-events:none`. |
 | Drag-and-drop slots | `WeekGrid.tsx`, `MealCell.tsx`, `App.tsx` | ✅ Done | `dragSourceRef` (ref not state). Move to empty slot; swap with filled slot. Both backed by API calls. |
 | History tab | `HistoryTab.tsx` + `GET /api/plan/history` | ✅ Done | Groups by ISO week DESC. Shows day, meal, recipe name, cooking time. |
+| Multilingual ingredient matching | ✅ Done | `synonyms.py` + static dictionary (103 groups, 857 terms, en/it/es_es/es_mx) + Claude API fallback. 93% resolution rate on 1372 unique ingredients. WAL mode + `busy_timeout` fix for DB lock. `warm_cache` runs post-refresh. |
 
 ### Next step
 
-Multilingual ingredient matching (synonyms.py + Claude API fallback).  
-Prompt ready — see §14.
+Phase 3 — Ingredient substitutability (user-managed pairs).  
+Spec in HANDOFF.md §15.
 
 ---
 
@@ -418,7 +419,7 @@ All Phase 2 items complete as of April 2026:
 | 4 | Single-user Docker, NAS deployment (107 tests, smoke tested) | ✅ Done |
 | Display fix | Ingredient name preposition stripping at render time (`frontend/utils/normalise.ts`, no backend change) | ✅ Done |
 
-**Total tests: 107 passing.**
+**Total tests: 132 passing.**
 
 Deferred to Phase 3: ingredient substitutability (see §15).  
 Deferred: multi-user Docker, suggestions tab improvements, PWA.
@@ -483,39 +484,26 @@ Do not start coding yet. Just the plan.
 
 ## 15. Phase 3 — Future items
 
-### Multilingual ingredient matching *(prompt ready, not yet coded)*
+### Multilingual ingredient matching ✅ Done (April 2026)
 
 **Problem:** Cookidoo ingredient names are multilingual (Italian, Spanish, English). Fuzzy matching handles spelling variants but not cross-language synonyms (e.g. "pomodori" ↔ "tomatoes").
 
 **Solution:** A two-tier lookup table. Tier 1: static JSON dictionary of known synonym groups. Tier 2: Claude API fallback for unknown terms, result cached permanently in SQLite.
 
 **Files:**
-- `backend/synonyms.py` — new module; `resolve(name) → canonical_name`
-- `backend/db.py` — new `ingredient_synonyms` table migration
-- `backend/suggestions.py` — pass resolved canonical names into `score_recipe_by_pantry()`
+- `backend/synonyms.py` — `resolve_ingredient(name, db)`, `warm_cache(db, names)`
+- `backend/db.py` — `ingredient_synonyms` table + `configure_connection()` (WAL + busy_timeout)
+- `backend/suggestions.py` — canonical name resolution integrated into scoring
 - `backend/shopping.py` — same resolution in the owned-flag step
-
-**New SQLite table:**
-```sql
-CREATE TABLE IF NOT EXISTS ingredient_synonyms (
-    normalised_name TEXT PRIMARY KEY,
-    canonical_name  TEXT NOT NULL,
-    source          TEXT NOT NULL,   -- 'dictionary' | 'claude_api' | 'user'
-    resolved_at     TEXT             -- ISO timestamp, UTC
-);
-```
 
 **Static dictionary:** `backend/data/ingredient_synonyms.json`  
 103 canonical groups · 857 terms · languages: en / it / es_es / es_mx
 
-**Claude API fallback:**
-- Called once per unknown ingredient; result cached in `ingredient_synonyms` with `source='claude_api'`
-- Requires `ANTHROPIC_API_KEY` in `.env` — if absent: passthrough (no crash, no resolution)
-- Warm cache: runs after every full Cookidoo cache refresh to pre-resolve all unique ingredient names; daily use never hits the API
+**Results:** 93% resolution rate on 1372 unique ingredient names (1280 resolved, 92 passthrough).
 
-**New route:** `GET /api/synonyms/cache` → operational transparency (list of resolved terms + sources)
+**Route:** `GET /api/synonyms/cache` — operational transparency endpoint live.
 
-**Dependency note:** Ingredient substitutability (item below) depends on this feature being complete first.
+**Prerequisite for substitutability:** ✅ Complete. Ingredient substitutability can now proceed.
 
 ---
 

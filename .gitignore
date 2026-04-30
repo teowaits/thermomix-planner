@@ -25,3 +25,5 @@ frontend/.vite/
 
 # OS
 .DS_Store
+backend.log
+frontend.log
